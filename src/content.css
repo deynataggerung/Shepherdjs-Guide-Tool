@@ -1,4 +1,4 @@
-#ScrapeMate {
+#TessituraGuides {
     position: fixed;
     right: 0;
     top: 0;
@@ -10,19 +10,19 @@
     background: #888 !important;
     box-shadow: 0 0 15px rgba(0, 0, 0, 0.15);
 }
-#ScrapeMate.ScrapeMate_left {
+#TessituraGuides.TessituraGuides_left {
     right: auto;
     left: 0;
 }
-#ScrapeMate.ScrapeMate_picking {
+#TessituraGuides.TessituraGuides_picking {
     /* outline: 4px dashed #00000096; */
 }
 
-.ScrapeMate_highlighted {
+.TessituraGuides_highlighted {
     outline: 2px #6495ed dashed !important;
     box-shadow: 0 0 100px #ffff00b5 inset !important;
 }
-img.ScrapeMate_highlighted, .ScrapeMate_highlighted > * {
+img.TessituraGuides_highlighted, .TessituraGuides_highlighted > * {
     opacity: .8;
 }
 

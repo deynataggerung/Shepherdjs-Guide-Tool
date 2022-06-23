@@ -10,11 +10,11 @@
 			"64": "icons/64.png",
 			"128": "icons/128.png"
 		},
-		"default_title": "ScrapeMate Beta"
+		"default_title": "Tessitura Guides"
 	},
-	"name": "ScrapeMate Beta",
-	"description": "/* @echo meta.description */",
-	"homepage_url": "/* @echo meta.homepage */",
+	"name": "Tessitura Guides",
+	"description": "Just a humble tool for building guides in Tessitura",
+	"homepage_url": "https://www.tessituranetwork.com/",
 	"icons": {
 		"16": "icons/16.png",
 		"24": "icons/24.png",
@@ -24,11 +24,6 @@
 		"128": "icons/128.png"
 	},
 	"permissions": ["tabs", "activeTab", "<all_urls>", "storage", "webRequest", "webRequestBlocking"],
-	"version": "/* @echo meta.version */",
-	// @ifndef env.CHROME
-	"applications": {
-		"gecko": {"id": "me.myself.and.irene@fellow.com"}
-	},
-	// @endif
+	"version": "1",
 	"manifest_version": 2
 }

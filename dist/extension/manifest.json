@@ -1,0 +1,29 @@
+{
+	"background": {"scripts": ["background.js"]},
+	"web_accessible_resources": ["sidebar.html", "content.css", "vendor/selectorgadget_combined.css"],
+	"browser_action": {
+		"default_icon": {
+			"16": "icons/16.png",
+			"24": "icons/24.png",
+			"32": "icons/32.png",
+			"48": "icons/48.png",
+			"64": "icons/64.png",
+			"128": "icons/128.png"
+		},
+		"default_title": "Tessitura ScrapeMate"
+	},
+	"name": "Tessitura ScrapeMate",
+	"description": "Just a humble tool for building guides in Tessitura",
+	"homepage_url": "https://mparlato-tn5820/Trunk/Tessitura/#/home",
+	"icons": {
+		"16": "icons/16.png",
+		"24": "icons/24.png",
+		"32": "icons/32.png",
+		"48": "icons/48.png",
+		"64": "icons/64.png",
+		"128": "icons/128.png"
+	},
+	"permissions": ["tabs", "activeTab", "<all_urls>", "storage", "webRequest", "webRequestBlocking"],
+	"version": "1",
+	"manifest_version": 2
+}

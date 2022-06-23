@@ -6,17 +6,21 @@ import Selector from './selector.js'
 
 
 // Template - main data model for this application:
-// {
-//     id: {
+// [
+//     {
 //         fields: [
-//             {name: '', selector: ''},
+//             {
+//                  attachTo: { element: '', on: ''},
+//                  title: '',
+//                  text: '',
+//             },
 //             ...
 //         ],
-//         title: '',
+//         page: '',
 //         urls: ['', ...] // pages template was ever edited on
 //     },
 //     ...
-// }
+// ]
 
 const htmlAttrImportance = [
     '_val', 'value', 'href', 'src', 'title', 'alt', 'name', 'html', '_text',
@@ -105,7 +109,7 @@ export default {
         let id = await this.findTemplate()
 
         if (!id) {
-            this.newTemplate()
+            this.newTemplate().then();
         } else {
             this.template = this.templates[id]
             this.stashedTemplate = _.cloneDeep(this.template)
@@ -121,7 +125,7 @@ export default {
         },
         fieldCovers () {
             // selCovers but accessing from fields
-            return this.fields.map(f => this.selCovers[f.selector])
+            return this.fields.map(f => this.selCovers[f.attachTo.element])
         },
         sortedTemplates () {
             if (!this.loc) return []
@@ -144,9 +148,9 @@ export default {
                 let liveSels = '?'
                 let matchPower = 'low'
                 let fields = t.fields.slice(0, -1)
-                let hasUndefined = _.find(fields, f => this.selCovers[f.selector] === undefined)
+                let hasUndefined = _.find(fields, f => this.selCovers[f.attachTo.element] === undefined)
                 if (!hasUndefined) {
-                    liveSels = _.filter(fields, f => this.selCovers[f.selector] > 0).length
+                    liveSels = _.filter(fields, f => this.selCovers[f.attachTo.element] > 0).length
                     if (liveSels > 0) matchPower = 'medium'
                     if (liveSels === fields.length) matchPower = 'high'
                 } else {
@@ -188,7 +192,7 @@ export default {
         },
         getAllSelectors (templates) {
             return _.chain(templates).values()
-                    .flatMap(t => t.fields.map(f => f.selector))
+                    .flatMap(t => t.fields.map(f => f.attachTo.element))
                     .uniq().value()
         },
         onOptionsEdited () {
@@ -200,9 +204,12 @@ export default {
         // Template Management
 
         makeTemplate (augment) {
+            let page = this.loc.hash.replace(/#\//, '');
+            page = page.split('/').filter(p => isNaN(Number.parseInt(p, 10))).join('/');
             return {
                 fields: [],
-                title: no3w(this.loc.hostname) + this.loc.pathname.replace(/\/$/, ''),
+                page: page,
+                created: Date.now(),
                 urls: [this.loc.href],
             }
         },
@@ -214,7 +221,7 @@ export default {
         cloneCurrentTemplate () {
             let t = _.cloneDeep(this.template)
             t.id = '_' + Date.now()
-            t.title += ' New'
+            t.page += ' New'
             this.template = t
             this.commitTemplate()
             this.templateEdited = false
@@ -227,13 +234,15 @@ export default {
             Vue.set(this.templates, this.template.id, this.template)
             this.templateEdited = false
         },
-        newTemplate () {
+        async newTemplate () {
+            this.loc = new URL(await this.sendMessage('getLocation'))
             this.resetView()
             this.template = this.makeTemplate()
             this.stashedTemplate = null
             this.augmentTemplate(this.template)
         },
         openTemplatesView () {
+            this.commitTemplate()
             this.resetView()
             this.templatesView = true
         },
@@ -263,10 +272,11 @@ export default {
             if (!_.includes(this.template.urls, this.loc.href))
                 this.template.urls.push(this.loc.href)
             Vue.set(this.templates, this.template.id, this.template)
-            let template = _.pick(this.template, ['title', 'fields', 'urls'])
+            let template = _.pick(this.template, ['page', 'fields', 'created', 'urls'])
             template.fields = template.fields.slice(0, -1) // remove ghost field
             this.sendMessage('saveStorage', {[this.template.id]: template})
         },
+        // TODO: fix this to just use the template variable
         findTemplate () {
             // looks for template matching this page
 
@@ -307,7 +317,7 @@ export default {
         // Fields/Selectors Management
 
         makeField () {
-            return {name: '', selector: ''}
+            return {attachTo: {element: '', on: ''}, title: '', text: ''}
         },
         addField () {
             this.template.fields.push(this.makeField())
@@ -333,16 +343,18 @@ export default {
             this.sendMessage('enablePicker')
             this.pickingField = f
             this.controlTabsView = true
-            this.submitSelector(f.selector)
-            this.getSelElemAttrs(f.selector)
+            this.submitSelector(f.attachTo.element)
+            this.getSelElemAttrs(f.attachTo.element)
 
             let idx = _.findIndex(this.fields, ff => ff === f)
             setTimeout(() => {
-                let fbox = this.$refs.field[idx].getBoundingClientRect()
-                let cbox = this.$refs.controlTabs.getBoundingClientRect()
-
-                let scrollBy = (fbox.y + fbox.height + fbox.height*.85) - cbox.y
-                if (scrollBy > 0) this.$el.scrollTop += scrollBy
+                // if (this.$refs) {
+                //     let fbox = this.$refs.field[idx].getBoundingClientRect()
+                //     // let cbox = this.$refs.controlTabs.getBoundingClientRect()
+                //
+                //     let scrollBy = (fbox.y + fbox.height + fbox.height*.85)
+                //     if (scrollBy > 0) this.$el.scrollTop += scrollBy
+                // }
             }, 100)
         },
         disablePicker () {
@@ -358,7 +370,7 @@ export default {
             this._onSelectorInput(f)
         },
         _onSelectorInput: _.debounce(function (f) {
-            let sel = f.selector
+            let sel = f.attachTo.element
             this.checkAndUpdateSelectors([sel])
             this.sendMessage('highlight', sel)
             this.commitTemplate()
@@ -367,7 +379,7 @@ export default {
         }, 300),
         onSelectorEnter (f) {
             if (f === this.pickingField)
-                this.submitSelector(f.selector)
+                this.submitSelector(f.attachTo.element)
         },
         onFieldNameInput (f) {
             if (f === _.last(this.fields)) this.addField()
@@ -375,7 +387,7 @@ export default {
         },
         _onFieldNameInput: _.debounce(function () {this.commitTemplate()}, 300),
         async checkAndUpdateSelectors (sels) {
-            if (!sels) sels = this.template.fields.map(f => f.selector)
+            if (!sels) sels = this.template.fields.map(f => f.attachTo.element)
             let data = await this.sendMessage('checkSelectors', sels)
             this.selCovers = Object.assign({}, this.selCovers, data)
         },
@@ -394,14 +406,14 @@ export default {
         },
         resetSelector (f) {
             if (!f) return
-            f.selector = ''
+            f.attachTo.element = ''
             this.onSelectorInput(f)
             if (f === this.pickingField)
-                this.submitSelector(f.selector)
+                this.submitSelector(f.attachTo.element)
         },
         remote_selectorPicked (sel) {
             if (this.pickingField)
-                this.pickingField.selector = sel
+                this.pickingField.attachTo.element = sel
             this.commitTemplate()
             this.getSelElemAttrs(sel)
             // don't mess with this line even if it makes little sense here
@@ -413,7 +425,22 @@ export default {
         async exportTemplates () {
             let storage = await this.sendMessage('loadStorage')
             let templates = _.pick(storage, this.selectedTemplates)
-            let content = JSON.stringify(templates, null, 2)
+            let templateArray = []
+            for (let template in templates) {
+                if (templates.hasOwnProperty(template)) {
+                    // Check for duplicate guides for a single page and keep the newest one
+                    let duplicateIndex = templateArray.findIndex(t => t.page === templates[template].page)
+                    if (duplicateIndex >= 0) {
+                        if (templateArray[duplicateIndex].created > templates[template].created) {
+                            templateArray.splice(duplicateIndex, 1);
+                        } else {
+                            continue;
+                        }
+                    }
+                    templateArray.push(templates[template])
+                }
+            }
+            let content = JSON.stringify(templateArray, null, 2)
             this.sendMessage('saveText', content)
         },
         importTemplates (e) {
@@ -426,7 +453,7 @@ export default {
             reader.addEventListener('load', e => {
                 try {
                     let object = JSON.parse(reader.result)
-                    this.commitImportedTemplates(object)
+                    this.commitImportedTemplates(object).then()
                 } catch (e) {
                     alert(`Import failed: ${e}\nCheck console for details.`)
                     throw e
@@ -435,23 +462,26 @@ export default {
             // TODO:low report problem with loading it or something?
             reader.readAsText(file)
         },
-        commitImportedTemplates (object) {
+        // TODO: fix import to match final export format
+        async commitImportedTemplates (object) {
+            this.loc = new URL(await this.sendMessage('getLocation'))
             let templates = Object.entries(object).map(([id,t]) => {
                 id = id.toString()
                 if (!id.startsWith('_')) id = '_' + id
                 let tt = this.makeTemplate()
                 tt.urls = t.urls.map(s => s.toString())
-                tt.title = t.title.toString()
+                tt.page = t.page.toString()
                 tt.fields = t.fields.map(f => {
                     let ff = this.makeField()
-                    ff.name = f.name.toString()
-                    ff.selector = f.selector.toString()
+                    ff.attachTo = {element: f.attachTo.element.toString(), on: f.attachTo.on.toString()}
+                    ff.title = f.title.toString()
+                    ff.text = f.text.toString()
                     return ff
                 })
                 if (this.templates[id])
-                    console.log(`ScrapeMate will overwrite ${id}:`, tt)
+                    console.log(`TessituraGuides will overwrite ${id}:`, tt)
                 else
-                    console.log(`ScrapeMate will create ${id}:`, tt)
+                    console.log(`TessituraGuides will create ${id}:`, tt)
                 return [id, tt]
             })
             this.sendMessage('saveStorage', _.fromPairs(templates))
@@ -473,10 +503,11 @@ export default {
             try {
                 let data = JSON.parse(this.jsonEditorText)
                 let fields = []
-                Object.entries(data).forEach(([k,v]) => {
+                Object.entries(data).forEach((v) => {
                     let f = this.makeField()
-                    f.name = k
-                    f.selector = v.sel
+                    f.attachTo = {element: v.attachTo.element, on: v.attachTo.on}
+                    f.title = v.title
+                    f.text = v.text[0]
                     fields.push(f)
                 })
                 this.template.fields = fields
@@ -492,9 +523,9 @@ export default {
         },
         resetJsonEditor () {
             this.jsonEditorIsReset = true
-            let object = _.fromPairs(this.template.fields.slice(0, -1).map(f => {
-                return [f.name, {sel: f.selector, type: Selector.getType(f.selector)}]
-            }))
+            let object = this.template.fields.slice(0, -1).map(f => {
+                return {attachTo: {element: f.attachTo.element, on: f.attachTo.on}, title: f.title, text: [f.text]}
+            })
             this.jsonEditorText = JSON.stringify(object, null, 2)
         },
         copyJsonEditor () {
